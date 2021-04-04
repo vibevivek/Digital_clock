@@ -1,0 +1,369 @@
+--In whole code I have written a specific name to every input and every output so reader will not get confused.
+
+
+
+
+--Master_clk is to reduce the frequency of given clk of 10MHz to 250Hz.
+Entity Master_clk IS
+	PORT (clk : IN bit;
+	clk1 : OUT bit
+	);
+END Master_clk;
+
+ARCHITECTURE procedural OF Master_clk IS
+	SIGNAL count : bit_vector[15:0]; 				--local variable count and 40,000 is under this limit.
+BEGIN
+	PROCESS(count,clk)
+	BEGIN
+		IF (clk='0' AND clk'EVENT) THEN
+			IF (count='0100111000100000') THEN 		--count value in decimal'20,000'
+				count<=count+1;
+				clk1<='0'; 							--clk1 will be '0' until count reaches '40,000'
+			ELSIF (count='1001110001000000') THEN 	--count value in decimal'40,000'
+				count<='0000000000000000'; 			--made count to zero to restart counting.
+				clk1<='1';  			   			--clk1 will be '1' until count reaches '20,000'
+			ELSE
+				count<=count+1;
+			END IF;
+		END IF;
+	END PROCESS;
+END ARCHITECTURE procedural;
+
+
+
+
+--This device will be useful in circulating seven segment display.
+--BOX is for taking signal from Master_clk and convert it to 2-digit binary number on interval of 4ms;
+ENTITY Box IS
+	PORT (clk1 : IN bit;
+	B : OUT bit_vector[1:0]
+	);
+END Box;
+
+ARCHITECTURE procedural OF Box IS
+	SIGNAL count1 : bit_vector[1:0];				--local variable count1.
+BEGIN
+	PROCESS(count1,clk1)
+	BEGIN
+		IF (clk1='0' AND clk1'EVENT) THEN
+			IF (count1='00') THEN
+				B<='00';
+			ELSIF (count1='01') THEN
+				B<='01';
+			ELSIF (count1='10') THEN
+				B<='10';
+			ELSE
+				B<='11';
+			END IF;
+			count1<=count1+1;						--count1 is modified once all if condition has been checked.
+		END IF;
+	END PROCESS;
+END ARCHITECTURE procedural;
+
+
+
+
+--This will cnvert 250Hz to 1Hz and input is from Master_clock.
+--Useful in updating seconds in clock and eventually minutes and hours.
+ENTITY Sec_box IS
+	PORT (clk1 : IN bit;
+	sec : OUT bit_vector[1:0]
+	);
+END Sec_box;
+
+ARCHITECTURE procedural OF Sec_box IS
+	SIGNAL count1 : bit_vector[7:0]; 				--local variable count1 and 250 is in this range.
+BEGIN
+	PROCESS(count1,clk1)
+	BEGIN
+		IF (clk1='0' AND clk1'EVENT) THEN
+			IF (count1='01111101') THEN 			--count1 value in decimal '125'.
+				count1<=count1+1;
+				sec<='0';
+			ELSIF (count1='11111010') THEN 			--count1 value in decimal '250'
+				count1<='00000000';					--count1 converted to 0 so cycle continues.
+				sec='1';							--1 second has passed.
+			ELSE
+				count1<=count1+1;
+			END IF;
+		END IF;
+	END PROCESS;
+END ARCHITECTURE procedural;
+
+
+
+
+--Input from Master_clock
+--Useful in led blinking.
+ENTITY Second IS
+	PORT (clk1 : IN bit;
+	C1 : OUT bit
+	);
+END Second;
+
+ARCHITECTURE procedular OF Second IS
+	SIGNAL count : bit_vector[7:0];					--'250' under limit.
+BEGIN
+	PROCESS(clk1, C)
+	BEGIN
+		IF ((clk1='0' OR clk1='1') AND clk1'EVENT) THEN
+			IF (count='01111101') THEN				--count=125.
+				C1='0';
+				count=count+1;
+			ELSIF (count='11111010') THEN
+				count='00000000'; 					--count=125.
+				C1='1';
+			ELSE
+				count=count+1;
+			END IF;
+		END IF;
+	END PROCESS;
+END procedular;
+
+
+
+
+--seven_segment is for to convert 4-digit binary number to decimal on display input from Chooser.
+ENTITY Seven_segment IS
+	PORT (Y : IN bit_vector[3:0];
+	cat : OUT bit_vector[7:0]
+	);
+END Seven_segment;
+
+ARCHITECTURE casestmt OF Seven_segment IS
+BEGIN
+	CASE Y IS
+		WHEN '0000' => cat <= '00000011'; 			--'0' with decimal piont off.
+		WHEN '0001' => cat <= '10011111'; 			--'1' with decimal piont off.
+		WHEN '0010' => cat <= '00100101'; 			--'2' with decimal piont off.
+		WHEN '0011' => cat <= '00001101'; 			--'3' with decimal piont off.
+		WHEN '0100' => cat <= '10011001'; 			--'4' with decimal piont off.
+		WHEN '0101' => cat <= '01001001'; 			--'5' with decimal piont off.
+		WHEN '0110' => cat <= '01000001'; 			--'6' with decimal piont off.
+		WHEN '0111' => cat <= '00011111'; 			--'7' with decimal piont off.
+		WHEN '1000' => cat <= '00000001'; 			--'8' with decimal piont off.
+		WHEN '1001' => cat <= '00001001'; 			--'9' with decimal piont off.
+	END CASE;
+END casestmt;
+
+
+
+
+--This device for the display of second on decimal point.
+--Taking input from Seven_segment and 2Hz.
+ENTITY Eight_segment IS
+	PORT (C : IN bit_vector[7:0];
+	C1 : IN bit;
+	C2 : OUT bit_vector[7:0]
+	);
+END Eight_segment;
+
+ARCHITECTURE casestmt OF Eight_segment IS
+BEGIN
+	CASE C1 IS
+		WHEN '1' => C2<=C1-1;						--here C1 is '1' means led will glow so making DA position as '0' in 8-bit_vector output.
+END casestmt;
+
+
+
+
+--Useful in choosing whether we want to display HH:MM or MM:SS.
+--Input is from 2 multiplexer and output to seven_segment.
+ENTITY Chooser IS
+	PORT (HM : IN bit_vector[3:0];
+	MS : IN bit_vector[3:0];
+	f : IN bit;
+	Y : OUT bit_vector[3:0]
+	);
+END Chooser;
+
+ARCHITECTURE casestmt OF Chooser IS
+BEGIN
+	CASE f IS
+		WHEN '0' => Y<=HM;							--Display HH:MM on display.
+		WHEN '1' =>Y<=MS;							--Display MM:SS on display.
+	END CASE;
+END casestmt;
+
+
+
+
+--Anoder is to convert output of BOX to A1A2A3A4 to display board.
+--Useful in circulating all digit on board.
+ENTITY Anoder IS
+	PORT (B : IN bit_vector[1:0];
+	A1,A2,A3,A4 : OUT bit
+	);
+END Anoder;
+ARCHITECTURE casestmt OF Anoder IS
+BEGIN
+	CASE B IS
+		WHEN '00' => A1 <= '0', A2='1', A3='1', A4='1';	--1st digit will light up.
+		WHEN '01' => A1 <= '1', A2='0', A3='1', A4='1'; --1st digit will light up.
+		WHEN '10' => A1 <= '1', A2='1', A3='0', A4='1'; --1st digit will light up.
+		WHEN '11' => A1 <= '1', A2='1', A3='1', A4='0'; --1st digit will light up.
+	END CASE;
+END casestmt;
+
+
+
+--Syncronize with Anoder.
+--mul_4_1 is to select one at a time from all number.
+--Input B to select one.
+ENTITY Mul_4_1 IS
+	PORT(HM1 : IN bit_vector[3:0];					--1st digit;
+	HM2 : IN bit_vector[3:0];						--2nd digit;
+	MS1 : IN bit_vector[3:0];						--3rd digit;
+	MS2 : IN bit_vector[3:0]						--4th digit;
+	B : IN bit_vector[1:0];
+	HMS : OUT bit_vector[3:0]
+	);
+END Mul_4_1;
+
+ARCHITECTURE casestmt OF Mul_4_1 IS
+BEGIN
+	PROCESS (B, HM1, HM2, MS1, MS2)
+	BEGIN
+		CASE B IS
+			WHEN '00' => HMS<= HM1;					--1st digit;
+			WHEN '01' => HMS<= HM2;					--2nd digit;
+			WHEN '10' => HMS<= MS1;					--3rd digit;
+			WHEN '11' => HMS<= MS2;					--4th digit;
+		END CASE;
+	END PROCESS;
+END ARCHITECTURE casestmt;
+
+
+
+
+--All time is controlled from here.
+--Depending on mode 'C' DIsplay time or set time.
+ENTITY Clock IS
+	PORT (sec : IN bit;
+	C : IN bit;										--push button C for mode change of time setting or normal clock.
+	U : IN bit;										--push button U for increasing digit value.
+	R : IN bit;										--push button R for choosing position of changing digit.
+	S1 : OUT bit_vector[3:0];
+	S2 : OUT bit_vector[3:0];
+	M1 : OUT bit_vector[3:0];
+	M2 : OUT bit_vector[3:0];
+	H1 : OUT bit_vector[3:0];
+	H2 : OUT bit_vector[3:0];
+	);
+END Clock;
+
+ARCHITECTURE procedural OF Clock IS
+	SIGNAL count2 : bit_vector[7:0];
+	SIGNAL position : bit_vector[2:0];
+BEGIN
+	PROCESS(count2, sec, C, U, R)
+	BEGIN
+		IF (C='0') THEN								--Normal display clock.
+			IF (sec='0' AND sec'EVENT) THEN
+				IF (count2='11111010') THEN 		--count2='250' or equvalently 1 second. And all time are being updated here by logic of constraints in given if-else condition.
+					IF (S2/='1001') THEN
+						S2<=S2+1;
+					ELSE
+						S2<='0000';
+						IF (S1/='0110') THEN
+							S1<=S1+1;
+						ELSE
+							S1<='0000';
+							IF (M2/='1001') THEN
+								M2<=M2+1;
+							ELSE
+								M2<='0000';
+								IF (M1/='0110') THEN
+									M1<=M1+1;
+								ELSE
+									M1<='0000';
+									IF (H1='0010');
+										IF (H2/='0011') THEN
+											H2<=H2+1;
+										ELSE
+											H1<='0000';
+											H2<='0000';
+									ELSE
+										IF (H1/='1001') THEN
+											H1<=H1+1;
+										ELSE
+											H1<='0000';
+											H2<=H2+1;
+										END IF;
+									END IF;
+								END IF;
+							END IF;
+						END IF;
+					END IF;
+					count2<='00000000';				--to continue cycle.
+				ELSE
+					count2<=count2+1;
+				END IF;
+			END IF:
+		ELSE 										--time setting mode as C='1' And setting all values of min,hour,sec as zero for user's convinient.
+			S1<='0000';
+			S2<='0000';
+			M1<='0000';
+			M2<='0000';
+			H1<='0000';
+			H2<='0000';
+			count2<='00000000';
+			IF (R='1') THEN							--selecting position on which user wants to update digit.
+				IF (position/='101') THEN		
+					position=position+1;
+				ELSE
+					position='000';					--to create cycle, which is after going to last position position goes to first position.
+				END IF;
+			END IF;
+			IF (U='1') THEN							--incrementing digit value by one whenever clock is being pushed of selecting position.
+													--And in subsequent logic we have taken care of all constraints of HH:MM:SS.
+													--Also after reaching to it's limit value goes to zero like 1st H1 reaching 2 it becomes 0 on next push.
+				IF (position='000') THEN
+					IF (H1/='10') THEN
+						H1<=H1+1;
+					ELSE
+						H1='00';
+					END IF;
+				ELSIF (position='001') THEN
+					IF (H2/='1001') THEN
+						H2<=H2+1;
+					ELSE
+						H2='0000';
+					END IF;
+				ELSIF (position='010') THEN
+					IF (M1/='110') THEN
+						M1<=M1+1;
+					ELSE
+						M1='000';
+					END IF;
+				ELSIF (position='011') THEN
+					IF (M2/='1001') THEN
+						M2<=M2+1;
+					ELSE
+						M2='0000';
+					END IF
+				ELSIF (position='100') THEN
+					IF (S1/='110') THEN
+						S1<=S1+1;
+					ELSE
+						S1='000';
+					END IF;
+				ELSE
+					IF (S2/='1001') THEN
+						S2<=S2+1;
+					ELSE
+						S2='0000';
+					END IF;
+				END IF;
+			END IF;
+		END IF;
+	END PROCESS;
+END ARCHITECTURE procedural; 
+
+
+
+
+
+
+
+

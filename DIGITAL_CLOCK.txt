@@ -1,0 +1,48 @@
+ENTITY DIGITAL_CLOCK IS
+	PORT(clk : IN bit;
+	C,U,R,D : IN bit;
+	A1,A2,A3,A4 : OUT bit;
+	C2 : OUT bit_vector[7:0]
+	);
+END DIGITAL_CLOCK;
+
+ARCHITECTURE structural OF DIGITAL_CLOCK IS
+BEGIN
+	SIGNAL clk1,sec,C1 : bit;
+	SIGNAL B : bit_vector[1:0];
+	SIGNAL H1,H2,M1,M2,S1,S2,HM,MS,Y : bit_vector[3:0];
+
+	master:
+		ENTITY WORK.Master_clk(cond)
+		PORT MAP(clk,clk1);
+	box:
+		ENTITY WORK.Box(cond)
+		PORT MAP(clk1,B);
+	secbox:
+		ENTITY WORK.Sec_box(cond)
+		PORT MAP(clk1,sec);
+	clock:
+		ENTITY WORK.Clock(cond)
+		PORT MAP(sec,C,U,R,S1,S2,M1,M2,H1,H2);
+	anoder:
+		ENTITY WORK.Anoder(cond)
+		PORT MAP(B,A);
+	mux1:
+		ENTITY WORK.Mul_4_1(cond)
+		PORT MAP(H1,H2,M1,M2,B,HM);
+	mux2:
+		ENTITY WORK.Mul_4_1(cond)
+		PORT MAP(M1,M2,S1,S2,B,MS);
+	chooser:
+		ENTITY WORK.Chooser(cond)
+		PORT MAP(HM,MS,D,Y);
+	seven_segment:
+		ENTITY WORK.Seven_segment(cond)
+		PORT MAP(Y,C);
+	second:
+		ENTITY WORK.Second(cond)
+		PORT MAP(clk1,C1);
+	eight_segment:
+		ENTITY WORK.Eight_segment(cond)
+		PORT MAP(C,C1,C2);
+END ARCHITECTURE structural;
